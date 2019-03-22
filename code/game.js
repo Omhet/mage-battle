@@ -1,3 +1,6 @@
+import { createPlayer } from './player.js';
+import Bullet from './bullet.js';
+
 const scene = new Phaser.Scene();
 const config = {
   type: Phaser.AUTO,
@@ -17,104 +20,58 @@ const config = {
 };
 
 const game = new Phaser.Game(config);
-let controls;
+let player, playerBullets, cursors;
 
 scene.preload = function() {
   // World
-  this.load.image('tiles', 'maps/world-1/world.png');
-  this.load.tilemapTiledJSON('map', 'maps/world-1/world.json');
+  this.load.image('tiles', 'assets/maps/world-1/world.png');
+  this.load.tilemapTiledJSON('map', 'assets/maps/world-1/world.json');
 
   // Hero
-  this.load.atlas('atlas', 'heroes/misa/atlas.png', 'heroes/misa/atlas.json');
+  this.load.atlas('atlas', 'assets/heroes/misa/atlas.png', 'assets/heroes/misa/atlas.json');
+
+  // Other
+  this.load.image('bullet', 'assets/bullets/fire-ball-1.png');
 };
 
 scene.create = function() {
   const map = this.make.tilemap({ key: 'map' });
-
   const tileset = map.addTilesetImage('world', 'tiles');
 
   const groundLayer = map.createStaticLayer('ground', tileset, 0, 0);
   const worldLayer = map.createStaticLayer('world', tileset, 0, 0);
-
   worldLayer.setDepth(10);
   worldLayer.setCollisionByProperty({ collides: true });
 
-  player = this.physics.add
-    .sprite(64, 64, 'atlas', 'misa-front')
-    .setSize(30, 40)
-  .setOffset(0, 24);
-  this.physics.add.collider(player, worldLayer);
-
-  const anims = this.anims;
-  anims.create({
-    key: 'misa-left-walk',
-    frames: anims.generateFrameNames('atlas', {
-      prefix: 'misa-left-walk.',
-      start: 0,
-      end: 3,
-      zeroPad: 3
-    }),
-    frameRate: 10,
-    repeat: -1
-  });
-  anims.create({
-    key: 'misa-right-walk',
-    frames: anims.generateFrameNames('atlas', {
-      prefix: 'misa-right-walk.',
-      start: 0,
-      end: 3,
-      zeroPad: 3
-    }),
-    frameRate: 10,
-    repeat: -1
-  });
-  anims.create({
-    key: 'misa-front-walk',
-    frames: anims.generateFrameNames('atlas', {
-      prefix: 'misa-front-walk.',
-      start: 0,
-      end: 3,
-      zeroPad: 3
-    }),
-    frameRate: 10,
-    repeat: -1
-  });
-  anims.create({
-    key: 'misa-back-walk',
-    frames: anims.generateFrameNames('atlas', {
-      prefix: 'misa-back-walk.',
-      start: 0,
-      end: 3,
-      zeroPad: 3
-    }),
-    frameRate: 10,
-    repeat: -1
-  });
+  player = createPlayer(this, worldLayer);
+  playerBullets = this.physics.add.group({ classType: Bullet, runChildUpdate: true });
 
   const camera = this.cameras.main;
-
-  cursors = this.input.keyboard.createCursorKeys();
-  // const { left, right, up, down } = cursors;
-  // controls = new Phaser.Cameras.Controls.FixedKeyControl({
-  //   camera,
-  //   left,
-  //   right,
-  //   up,
-  //   down,
-  //   speed: 0.5
-  // });
-
   camera.startFollow(player);
   camera.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+
+  cursors = this.input.keyboard.createCursorKeys();
+
+
+
+  this.input.on('pointerdown', function (pointer, time, lastFired) {
+    // if (player.active === false)
+    //     return;
+
+    const bullet = playerBullets.get().setActive(true).setVisible(true);
+
+    if (bullet)
+    {
+      console.log(pointer)
+        bullet.fire(player, pointer);
+        // this.physics.add.collider(enemy, bullet, enemyHitCallback);
+    }
+}, this);
+
 };
 
-const speed = 175;
+const speed = 160;
 scene.update = function(time, delta) {
-  // controls.update(delta);
-
-  const prevVelocity = player.body.velocity.clone();
-
-  // Stop any previous movement from the last frame
   player.body.setVelocity(0);
 
   // Horizontal movement
@@ -131,11 +88,9 @@ scene.update = function(time, delta) {
     player.body.setVelocityY(speed);
   }
 
-  // Normalize and scale the velocity so that player can't move faster along a diagonal
   player.body.velocity.normalize().scale(speed);
 
   
-  // Update the animation last and give left/right animations precedence over up/down animations
   if (cursors.left.isDown) {
     player.anims.play("misa-left-walk", true);
   } else if (cursors.right.isDown) {
@@ -147,11 +102,4 @@ scene.update = function(time, delta) {
   } else {
     player.anims.stop();
   }
-
-  // If we were moving, pick and idle frame to use
-  // if (prevVelocity.x < 0) player.setTexture("atlas", "misa-left");
-  // else if (prevVelocity.x > 0) player.setTexture("atlas", "misa-right");
-  // else if (prevVelocity.y < 0) player.setTexture("atlas", "misa-back");
-  // else if (prevVelocity.y > 0) player.setTexture("atlas", "misa-front");
-
 };
