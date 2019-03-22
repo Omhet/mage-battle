@@ -20,7 +20,7 @@ const config = {
 };
 
 const game = new Phaser.Game(config);
-let player, playerBullets, cursors;
+let player, playerBullets, bulletSpawner, cursors, mouse;
 
 scene.preload = function() {
   // World
@@ -45,13 +45,14 @@ scene.create = function() {
 
   player = createPlayer(this, worldLayer);
   playerBullets = this.physics.add.group({ classType: Bullet, runChildUpdate: true });
+  bulletSpawner = this.add.rectangle(player.x, player.y, 16, 16, 0x6666ff);
 
   const camera = this.cameras.main;
   camera.startFollow(player);
   camera.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
 
   cursors = this.input.keyboard.createCursorKeys();
-
+  mouse = this.input.activePointer;
 
 
   this.input.on('pointerdown', function (pointer, time, lastFired) {
@@ -62,8 +63,7 @@ scene.create = function() {
 
     if (bullet)
     {
-      console.log(pointer)
-        bullet.fire(player, pointer);
+        bullet.fire(bulletSpawner, pointer);
         // this.physics.add.collider(enemy, bullet, enemyHitCallback);
     }
 }, this);
@@ -102,4 +102,9 @@ scene.update = function(time, delta) {
   } else {
     player.anims.stop();
   }
+
+
+  bulletSpawner.x = player.x;
+  bulletSpawner.y = player.y;
+  bulletSpawner.rotation = Phaser.Math.Angle.Between(bulletSpawner.x, bulletSpawner.y, mouse.worldX, mouse.worldY);
 };
