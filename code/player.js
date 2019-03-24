@@ -1,7 +1,7 @@
 export function createPlayer(game, worldLayer) {
     const player = game.physics.add
-    .sprite(64, 64, 'atlas', 'misa-front')
-    .setSize(30, 40)
+    .sprite(512, 704, 'atlas', 'misa-front')
+    .setSize(32, 40)
     .setOffset(0, 24);
     game.physics.add.collider(player, worldLayer);
 

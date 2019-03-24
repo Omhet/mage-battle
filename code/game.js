@@ -13,14 +13,21 @@ const config = {
     arcade: {
       gravity: {
         y: 0
-      }
+      },
+      debug: false
     }
   },
   scene
 };
 
 const game = new Phaser.Game(config);
-let player, playerBullets, bulletSpawner, cursors, mouse;
+let player,
+  playerBullets,
+  bulletSpawner,
+  cursors,
+  mouse,
+  collideGroup,
+  worldLayer;
 
 scene.preload = function() {
   // World
@@ -28,24 +35,54 @@ scene.preload = function() {
   this.load.tilemapTiledJSON('map', 'assets/maps/world-1/world.json');
 
   // Hero
-  this.load.atlas('atlas', 'assets/heroes/misa/atlas.png', 'assets/heroes/misa/atlas.json');
+  this.load.atlas(
+    'atlas',
+    'assets/heroes/misa/atlas.png',
+    'assets/heroes/misa/atlas.json'
+  );
 
   // Other
   this.load.image('bullet', 'assets/bullets/fire-ball-1.png');
+  this.load.image('rect', 'assets/other/rect.png');
 };
 
 scene.create = function() {
   const map = this.make.tilemap({ key: 'map' });
-  const tileset = map.addTilesetImage('world', 'tiles');
+  const tileset = map.addTilesetImage('worldset', 'tiles');
 
   const groundLayer = map.createStaticLayer('ground', tileset, 0, 0);
-  const worldLayer = map.createStaticLayer('world', tileset, 0, 0);
+  worldLayer = map
+    .createStaticLayer('world', tileset, 0, 0)
+    .setCollisionByExclusion([-1]);
+
   worldLayer.setDepth(10);
-  worldLayer.setCollisionByProperty({ collides: true });
 
   player = createPlayer(this, worldLayer);
-  playerBullets = this.physics.add.group({ classType: Bullet, runChildUpdate: true });
+  playerBullets = this.physics.add.group({
+    classType: Bullet,
+    runChildUpdate: true
+  });
+
   bulletSpawner = this.add.rectangle(player.x, player.y, 16, 16, 0x6666ff);
+  bulletSpawner.alpha = 0;
+
+  collideGroup = this.physics.add.group({
+    classType: Phaser.GameObjects.Sprite,
+    runChildUpdate: true
+  });
+
+  worldLayer.forEachTile(t => {
+    if (t.collides) {
+      collideGroup.create(t.pixelX + 16, t.pixelY + 16, 'rect', 0, true, true);
+    }
+  });
+  this.physics.add.collider(
+    playerBullets,
+    collideGroup,
+    bulletVsWorld,
+    null,
+    this
+  );
 
   const camera = this.cameras.main;
   camera.startFollow(player);
@@ -54,21 +91,31 @@ scene.create = function() {
   cursors = this.input.keyboard.createCursorKeys();
   mouse = this.input.activePointer;
 
+  this.input.on(
+    'pointerdown',
+    function(pointer, time, lastFired) {
+      if (player.active === false) return;
 
-  this.input.on('pointerdown', function (pointer, time, lastFired) {
-    // if (player.active === false)
-    //     return;
+      const bullet = playerBullets
+        .get()
+        .setActive(true)
+        .setVisible(true);
 
-    const bullet = playerBullets.get().setActive(true).setVisible(true);
-
-    if (bullet)
-    {
+      if (bullet) {
         bullet.fire(bulletSpawner, pointer);
-        // this.physics.add.collider(enemy, bullet, enemyHitCallback);
-    }
-}, this);
-
+        this.physics.add.collider(bullet, worldLayer, bulletVsWorld);
+      }
+    },
+    this
+  );
 };
+
+function bulletVsWorld(bulletHit, worldHit) {
+  if (bulletHit.active === true && worldHit.active === true) {
+    bulletHit.setActive(false);
+    bulletHit.setVisible(false);
+  }
+}
 
 const speed = 160;
 scene.update = function(time, delta) {
@@ -90,21 +137,24 @@ scene.update = function(time, delta) {
 
   player.body.velocity.normalize().scale(speed);
 
-  
   if (cursors.left.isDown) {
-    player.anims.play("misa-left-walk", true);
+    player.anims.play('misa-left-walk', true);
   } else if (cursors.right.isDown) {
-    player.anims.play("misa-right-walk", true);
+    player.anims.play('misa-right-walk', true);
   } else if (cursors.up.isDown) {
-    player.anims.play("misa-back-walk", true);
+    player.anims.play('misa-back-walk', true);
   } else if (cursors.down.isDown) {
-    player.anims.play("misa-front-walk", true);
+    player.anims.play('misa-front-walk', true);
   } else {
     player.anims.stop();
   }
 
-
   bulletSpawner.x = player.x;
-  bulletSpawner.y = player.y;
-  bulletSpawner.rotation = Phaser.Math.Angle.Between(bulletSpawner.x, bulletSpawner.y, mouse.worldX, mouse.worldY);
+  bulletSpawner.y = player.y + 12;
+  bulletSpawner.rotation = Phaser.Math.Angle.Between(
+    bulletSpawner.x,
+    bulletSpawner.y,
+    mouse.worldX,
+    mouse.worldY
+  );
 };
