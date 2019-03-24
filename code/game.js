@@ -71,6 +71,8 @@ scene.create = function() {
     runChildUpdate: true
   });
 
+  console.log('tt')
+
   worldLayer.forEachTile(t => {
     if (t.collides) {
       collideGroup.create(t.pixelX + 16, t.pixelY + 16, 'rect', 0, true, true);
